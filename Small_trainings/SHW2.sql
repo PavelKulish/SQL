@@ -28,12 +28,12 @@ GROUP BY Embarked
 HAVING Embarked != 'NULL'
 
 --Задание 5
-SELECT top 1 
+SELECT top 1 with ties
 	Embarked as Departure_port,
-	COUNT(Name) as Overall_Passengers
+	COUNT(*) as Overall_Passengers
 FROM Titanic_train
 GROUP BY Embarked
-ORDER BY COUNT(Name) desc
+ORDER BY COUNT(*) desc
 
 --Задание 6
 SELECT 
@@ -62,22 +62,9 @@ GROUP BY Ticket
 HAVING COUNT(DISTINCT Embarked) > 1
 
 --Задание 9
-SELECT Ticket, COUNT(Name) as Number_per_ticket, SUM(CASE WHEN Survived = 1 THEN 1 ELSE 0 END) as Survived_per_ticket 
+SELECT Ticket, Pclass, Fare, Embarked, COUNT(*) as Number_per_comb, SUM(CASE WHEN Survived = 1 THEN 1 ELSE 0 END) as Survived_per_comb 
 FROM Titanic_train
-GROUP BY Ticket
-
-SELECT pClass, COUNT(Name) as Number_per_class, SUM(CASE WHEN Survived = 1 THEN 1 ELSE 0 END) as Survived_per_class
-FROM Titanic_train
-GROUP BY pClass
-
-SELECT Fare, COUNT(Name) as Number_per_fare, SUM(CASE WHEN Survived = 1 THEN 1 ELSE 0 END) as Survived_per_fare
-FROM Titanic_train
-GROUP BY Fare
-
-SELECT Embarked, COUNT(Name) as Number_per_port, SUM(CASE WHEN Survived = 1 THEN 1 ELSE 0 END) as Survived_per_port
-FROM Titanic_train
-GROUP BY Embarked
-HAVING Embarked != 'NULL'
+GROUP BY Ticket, Pclass, Fare, Embarked
 
 --Задание 10
 SELECT Ticket
@@ -86,19 +73,12 @@ GROUP BY Ticket
 HAVING (COUNT(Name) > 1) and (SUM(CASE WHEN Survived = 1 THEN 1 ELSE 0 END) = COUNT(Name))
 
 --Задание 11
+--Задание 11
 SELECT 
-	COUNT(Name) as Overall_Passengers,
-	SUM(CASE WHEN Survived = 1 THEN 1 ELSE 0 END) as Survive_Passengers,
-	CAST(SUM(CASE WHEN Survived = 1 THEN 1 ELSE 0 END) as float) / CAST(COUNT(Name) as float) as Survivability
+	CAST(SUM(CASE WHEN Survived = 1 and Name LIKE '%Mary%' THEN 1 ELSE 0 END) as float) / SUM(CASE WHEN Name LIKE '%Mary%' THEN 1 END) as Survivability_Mary,
+	CAST(SUM(CASE WHEN Survived = 1 and Name LIKE '%Elizabeth%' THEN 1 ELSE 0 END) as float) / SUM(CASE WHEN Name LIKE '%Elizabeth%' THEN 1 END) as Survivability_Elizabeth
 FROM Titanic_train
-WHERE Name like '%Mary%'
 
-SELECT 
-	COUNT(Name) as Overall_Passengers,
-	SUM(CASE WHEN Survived = 1 THEN 1 ELSE 0 END) as Survive_Passengers,
-	CAST(SUM(CASE WHEN Survived = 1 THEN 1 ELSE 0 END) as float) / CAST(COUNT(Name) as float) as Survivability
-FROM Titanic_train
-WHERE Name like '%Elizabeth%'
 
 --Задание 12
 SELECT pClass, COUNT(Name) as Men_per_class, SUM(CASE WHEN Survived = 1 THEN 1 ELSE 0 END) as Survive_men_per_class
