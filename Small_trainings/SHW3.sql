@@ -2,7 +2,7 @@
 DECLARE @max_volume as int
 SET @max_volume = 100
 
-SELECT Good, (QtyInStock * Volume) AS Res
+SELECT Good_id
 FROM Goods
 WHERE (QtyInStock * Volume) > @max_volume
 
@@ -31,7 +31,7 @@ FROM Docs INNER JOIN Docs_data ON
 		Docs.DocNum = Docs_data.DocNum
 	INNER JOIN Goods ON 
 		Docs_data.Good_id = Goods.Good_id 
-WHERE ('20251001' <= Data) and (Data <= '20251031')
+WHERE ('20251001' <= Data) and (Data < '20251101')
 
 --Задание 5
 DECLARE @g_id as int
@@ -50,6 +50,7 @@ FROM Customers INNER JOIN Docs ON
 		Customers.Cust_id = Docs.Cust_ID
 	INNER JOIN Docs_data ON 
 		Docs.DocNum = Docs_data.DocNum
+WHERE ('20251001' <= Data) and (Data < '20251101')
 ORDER BY Price desc
 
 --Задание 7
@@ -58,36 +59,41 @@ FROM Docs INNER JOIN Docs_data ON
 		Docs.DocNum = Docs_data.DocNum
 	INNER JOIN Goods ON 
 		Docs_data.Good_id = Goods.Good_id 
-WHERE ('20251001' <= Data) and (Data <= '20251031')
+WHERE ('20251001' <= Data) and (Data < '20251101')
 
 --Задание 8
-SELECT top 1 with ties MAX(City) as Res
-FROM Docs INNER JOIN Customers ON
-		Docs.Cust_ID = Customers.Cust_id
-GROUP BY Docs.Cust_ID
-ORDER BY SUM(Total) desc 
+SELECT top 1 with ties City
+FROM Docs INNER JOIN Customers
+	ON Docs.Cust_ID = Customers.Cust_id
+GROUP BY City
+ORDER BY SUM(Total) desc
 
 --Задание 9
-SELECT MAX(Customer) as Customer, SUM(Qty) as Sum_count, SUM(Docs_data.Price * Qty) as Sum_price, SUM(Volume * Qty) as Sum_Vol, SUM(Mass * Qty) as Sum_mass
-FROM Customers INNER JOIN Docs ON
+SELECT 
+    Customers.Customer,
+    ISNULL(SUM(Docs_data.Qty), 0) as Sum_count,
+    ISNULL(SUM(Docs_data.Price * Docs_data.Qty), 0) as Sum_price,
+    ISNULL(SUM(Goods.Volume * Docs_data.Qty), 0) as Sum_Vol,
+    ISNULL(SUM(Goods.Mass * Docs_data.Qty), 0) as Sum_mass
+FROM Customers LEFT JOIN Docs ON 
 		Customers.Cust_ID = Docs.Cust_ID
-	INNER JOIN Docs_data ON
+	LEFT JOIN Docs_data ON 
 		Docs.DocNum = Docs_data.DocNum
-	INNER JOIN Goods ON 
+	LEFT JOIN Goods ON 
 		Docs_data.Good_id = Goods.Good_id
-GROUP BY Docs.Cust_ID
+GROUP BY Customers.Cust_ID, Customers.Customer
 
 SELECT 
-	MAX(Customer), 
+	MAX(Customer) as Customer, 
 	ISNULL(SUM(CASE WHEN Good LIKE '%Монитор%' THEN Qty END), 0) as Sum_count,
 	ISNULL(SUM((CASE WHEN Good LIKE '%Монитор%' THEN Docs_data.Price END) * (CASE WHEN Good LIKE '%Монитор%' THEN Qty END)), 0) as Sum_price, 
 	ISNULL(SUM((CASE WHEN Good LIKE '%Монитор%' THEN Volume END) * (CASE WHEN Good LIKE '%Монитор%' THEN Qty END)), 0) as Sum_Vol, 
 	ISNULL(SUM((CASE WHEN Good LIKE '%Монитор%' THEN Mass END) * (CASE WHEN Good LIKE '%Монитор%' THEN Qty END)), 0) as Sum_mass
-FROM Customers INNER JOIN Docs ON
+FROM Customers LEFT JOIN Docs ON
 		Customers.Cust_ID = Docs.Cust_ID
-	INNER JOIN Docs_data ON
+	LEFT JOIN Docs_data ON
 		Docs.DocNum = Docs_data.DocNum
-	INNER JOIN Goods ON 
+	LEFT JOIN Goods ON 
 		Docs_data.Good_id = Goods.Good_id
 GROUP BY Docs.Cust_ID
 
