@@ -13,42 +13,102 @@ ORDER BY OrderMonth
 
 --Задание 2
 SELECT 
-	MAX(Section) as Section,
-	(SELECT COUNT(DISTINCT DAY(Date_of_Order)) FROM Orders WHERE Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE()) AS Sum_days,
-	SUM(Qty_ord * Orders_data.Price_RUR) as Sum_Revenue,
-	CAST(SUM(Qty_ord * Orders_data.Price_RUR) AS float) / (SELECT COUNT(DISTINCT DAY(Date_of_Order)) FROM Orders WHERE Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE()) AS Average_rev
-FROM Orders INNER JOIN Orders_data ON 
-	Orders.ndoc = Orders_data.ndoc
-INNER JOIN Books ON
+	T1.Section_ID,
+	--(SELECT COUNT(DISTINCT DAY(Date_of_Order)) FROM Orders WHERE Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE()) AS Sum_days,
+	--SUM(Qty_ord * Orders_data.Price_RUR) as Sum_Revenue,
+	ISNULL(SUM((CASE WHEN Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE() THEN Qty_ord ELSE 0 END) * Orders_data.Price_RUR), 0)
+	/ (SELECT COUNT(DISTINCT DAY(Date_of_Order)) FROM Orders WHERE Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE()) AS Average_rev
+FROM Sections AS T1 LEFT JOIN Books ON 
+	T1.Section_ID = Books.Section_ID
+LEFT JOIN Orders_data ON
 	Orders_data.Book_ID = Books.Book_ID
-INNER JOIN Sections ON
-	Sections.Section_ID = Books.Section_ID
-WHERE Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE()
-GROUP BY Books.Section_ID
+LEFT JOIN Orders ON
+	Orders.ndoc = Orders_data.ndoc 
+GROUP BY T1.Section_ID
 
 --Задание 3
-SELECT MAX(T1.Name) AS Name, MAX(T1.Surname) as Surname, T1.Sum_Revenue AS Sum_Revenue, COUNT(T2.Author_ID) as Rating
+SELECT T1.Author_ID, T1.Sum_Revenue AS Sum_Revenue, COUNT(T2.Author_ID) as Rating
 FROM (
-SELECT Books.Author_ID, MAX(Name) as Name, MAX(Surname) as Surname, SUM(Qty_ord * Orders_data.Price_RUR) as Sum_Revenue
-FROM Orders_data INNER JOIN Books ON 
-	Books.Book_ID = Orders_data.Book_ID
-INNER JOIN Authors ON 
+SELECT Authors.Author_ID, ISNULL(SUM(Qty_ord * Orders_data.Price_RUR), 0) as Sum_Revenue
+FROM Authors LEFT JOIN Books ON 
 	Authors.Author_ID = Books.Author_ID
-GROUP BY Books.Author_ID
-) AS T1 INNER JOIN 
+LEFT JOIN Orders_data ON 
+	Orders_data.Book_ID = Books.Book_ID
+LEFT JOIN Orders ON
+	Orders_data.ndoc = Orders.ndoc AND Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE()
+GROUP BY Authors.Author_ID
+) AS T1 LEFT JOIN 
 (
-SELECT Books.Author_ID, MAX(Name) as Name, MAX(Surname) as Surname, SUM(Qty_ord * Orders_data.Price_RUR) as Sum_Revenue
-FROM Orders_data INNER JOIN Books ON 
-	Books.Book_ID = Orders_data.Book_ID
-INNER JOIN Authors ON 
+SELECT Authors.Author_ID, ISNULL(SUM(Qty_ord * Orders_data.Price_RUR), 0) as Sum_Revenue
+FROM Authors LEFT JOIN Books ON 
 	Authors.Author_ID = Books.Author_ID
-GROUP BY Books.Author_ID
+LEFT JOIN Orders_data ON 
+	Orders_data.Book_ID = Books.Book_ID
+LEFT JOIN Orders ON
+	Orders_data.ndoc = Orders.ndoc AND Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE()
+GROUP BY Authors.Author_ID
 ) AS T2 ON T1.Sum_Revenue <= T2.Sum_Revenue
 GROUP BY T1.Author_ID, T1.Sum_Revenue
 ORDER BY Rating
 
 --Задание 4
-SELECT MAX(Customer) as Customer, ISNULL(SUM(Pmnt_RUR), 0) as Overall_pmnt
+SELECT Customers.Cust_ID, ISNULL(SUM(Pmnt_RUR), 0) as Overall_pmnt
 FROM Customers LEFT JOIN Orders ON
 	Orders.Cust_ID = Customers.Cust_ID AND Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE() 
 GROUP BY Customers.Cust_ID
+
+--Задание 5
+SELECT Book_ID
+FROM Stock
+WHERE Qty_in_Stock > 0
+
+EXCEPT
+
+SELECT Book_ID
+FROM Orders INNER JOIN Orders_data ON
+	Orders.ndoc = Orders_data.ndoc
+WHERE Date_of_Order > '20251001'
+
+--Задание 6
+SELECT Cust_ID, Book_ID
+FROM Orders INNER JOIN Orders_data ON
+	Orders.ndoc = Orders_data.ndoc
+GROUP BY Cust_ID, Book_ID
+
+EXCEPT
+
+SELECT Cust_ID, Orders_data.Book_ID
+FROM Orders INNER JOIN Orders_data ON
+	Orders.ndoc = Orders_data.ndoc
+INNER JOIN Stock ON
+	Stock.Book_ID = Orders_data.Book_ID
+WHERE (Qty_in_Stock = 0) or (Date_of_Order > '20251001')
+GROUP BY Cust_ID, Orders_data.Book_ID
+
+--Задание 7
+SELECT 
+	CAST(SUM(Qty_rsrv) AS float) / SUM(Qty_in_stock) as Physic_percent,
+	CAST(SUM(Qty_rsrv * Price_RUR) AS float) / SUM(Qty_in_stock * Price_RUR) as RUR_percent
+FROM Stock LEFT JOIN Books ON
+	Books.Book_ID = Stock.Book_ID
+
+--Задание 8 
+SELECT
+	'Not claimed' AS Comment,
+	Cust_ID,
+	SUM(CASE WHEN Qty_out = 0 AND Pmnt_RUR > 0 THEN Pmnt_RUR * Qty_ord ELSE 0 END) AS Summary_pmnt
+FROM Orders_data INNER JOIN Orders ON
+	Orders_data.ndoc = Orders.ndoc
+WHERE Qty_out = 0 AND Pmnt_RUR > 0
+GROUP BY Cust_ID
+
+UNION ALL
+
+SELECT
+	'Not paid' AS Comment,
+	Cust_ID,
+	SUM(CASE WHEN Pmnt_RUR = 0 AND Qty_out > 0 THEN Price_RUR * Qty_out ELSE 0 END) AS Summary_unclmd
+FROM Orders_data INNER JOIN Orders ON
+	Orders_data.ndoc = Orders.ndoc
+WHERE Pmnt_RUR = 0 AND Qty_out > 0
+GROUP BY Cust_ID
