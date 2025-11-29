@@ -17,7 +17,7 @@ SELECT
 	--(SELECT COUNT(DISTINCT DAY(Date_of_Order)) FROM Orders WHERE Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE()) AS Sum_days,
 	--SUM(Qty_ord * Orders_data.Price_RUR) as Sum_Revenue,
 	ISNULL(SUM((CASE WHEN Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE() THEN Qty_ord ELSE 0 END) * Orders_data.Price_RUR), 0)
-	/ (SELECT COUNT(DISTINCT DAY(Date_of_Order)) FROM Orders WHERE Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE()) AS Average_rev
+	/ (SELECT COUNT(DISTINCT CAST(Date_of_Order as date)) FROM Orders WHERE Date_of_Order BETWEEN DATEADD(month, -1, GETDATE()) AND GETDATE()) AS Average_rev
 FROM Sections AS T1 LEFT JOIN Books ON 
 	T1.Section_ID = Books.Section_ID
 LEFT JOIN Orders_data ON
@@ -112,3 +112,31 @@ FROM Orders_data INNER JOIN Orders ON
 	Orders_data.ndoc = Orders.ndoc
 WHERE Pmnt_RUR = 0 AND Qty_out > 0
 GROUP BY Cust_ID
+
+--Задание 9
+DECLARE @b_id as int, @amount as int, @c_id as int
+SET @b_id = 57
+SET @amount = 3
+SET @c_id = 7
+
+SELECT 
+	CASE WHEN (Qty_in_Stock - Qty_rsrv >= @amount) AND
+	(SELECT MAX(Balance) - SUM(Pmnt_RUR) AS Remain
+	 FROM Customers INNER JOIN Orders ON
+		Customers.Cust_ID = Orders.Cust_ID
+	 GROUP BY Customers.Cust_ID
+	 HAVING Customers.Cust_ID = @c_id) >= Price_RUR * @amount
+	THEN 'YES' ELSE 'NO' END AS Res
+FROM Stock INNER JOIN Books ON
+	Stock.Book_ID = Books.Book_ID
+WHERE Books.Book_ID = @b_id
+
+--Задание 10
+UPDATE Orders
+SET Orders.Sum_RUR = T1.Sum_rur
+FROM Orders INNER JOIN 
+(
+	SELECT ndoc, SUM(Qty_out * Price_RUR) as Sum_rur
+	FROM Orders_data
+	GROUP BY ndoc
+) as T1 ON T1.ndoc = Orders.ndoc

@@ -5,20 +5,23 @@ FROM Покупатели LEFT JOIN Документы ON
 GROUP BY Покупатели.Покупатель_ID
 
 --Задание 2
-SELECT Наименование
+SELECT Товары.Товар_ID, Наименование
 FROM Товары LEFT JOIN Документы_данные ON
 	Товары.Товар_ID = Документы_данные.Товар_ID
 WHERE нДок IS NULL
 
 --Задание 3
-SELECT Наименование
-FROM Товары LEFT JOIN Документы_данные ON
-		Товары.Товар_ID = Документы_данные.Товар_ID
-	LEFT JOIN Документы ON 
-		Документы.ндок = Документы_данные.ндок
-	LEFT JOIN Покупатели ON
-		Покупатели.Покупатель_ID = Документы.Покупатель_ID and Фамилия LIKE 'Иванов'
-WHERE Покупатели.Покупатель_ID IS NULL
+SELECT Товар_ID
+FROM Товары
+
+EXCEPT
+
+SELECT Товар_ID
+FROM Документы INNER JOIN Покупатели ON
+		Покупатели.Покупатель_ID = Документы.Покупатель_ID
+	INNER JOIN Документы_данные ON
+		Документы_данные.ндок = Документы.ндок
+WHERE Фамилия LIKE 'Иванов' 
 
 
 --Задание 4
@@ -40,77 +43,81 @@ EXCEPT
 SELECT Документы.Покупатель_ID, Документы_данные.Товар_ID
 FROM Документы INNER JOIN Документы_данные ON 
 	Документы.ндок = Документы_данные.ндок
-WHERE Дата > '20251001'
+WHERE Дата >= '20251001'
 
 --Задание 6 
-SELECT Покупатель_ID, COUNT(DISTINCT(Товар_ID)) as Res
-FROM Документы INNER JOIN Документы_данные ON
+SELECT Покупатели.Покупатель_ID
+FROM Покупатели LEFT JOIN Документы ON
+	Документы.Покупатель_ID = Покупатели.Покупатель_ID
+LEFT JOIN Документы_данные ON
 	Документы.ндок = Документы_данные.ндок
-GROUP BY Покупатель_ID
+GROUP BY Покупатели.Покупатель_ID
 HAVING COUNT(DISTINCT(Товар_ID)) < 5
 
 --Задание 7
-SELECT 
-    T1.Покупатель_ID as id1, 
-    T2.Покупатель_ID as id2
-FROM Документы AS T1
-INNER JOIN Документы AS T2 ON T1.Покупатель_ID < T2.Покупатель_ID
+WITH ПокупательТовары AS (
+    SELECT DISTINCT 
+        Д.Покупатель_ID,
+        ДД.Товар_ID
+    FROM Документы Д
+    INNER JOIN Документы_данные ДД ON Д.ндок = ДД.ндок
+),
+ВсеПокупатели AS (
+    SELECT DISTINCT Покупатель_ID FROM Документы
+    UNION
+    SELECT Покупатель_ID FROM Покупатели
+),
+ПарыПокупателей AS (
+    SELECT 
+        П1.Покупатель_ID as id1,
+        П2.Покупатель_ID as id2
+    FROM ВсеПокупатели П1
+    CROSS JOIN ВсеПокупатели П2
+    WHERE П1.Покупатель_ID < П2.Покупатель_ID
+)
+SELECT ПарыПокупателей.id1, ПарыПокупателей.id2
+FROM ПарыПокупателей 
 WHERE NOT EXISTS (
-    SELECT DD1.Товар_ID
-    FROM Документы_данные AS DD1
-    WHERE DD1.ндок = T1.ндок
-
+    SELECT Товар_ID FROM ПокупательТовары WHERE Покупатель_ID = ПарыПокупателей.id1
     EXCEPT
-
-    SELECT DD2.Товар_ID
-    FROM Документы_данные AS DD2
-    INNER JOIN Документы D2 ON DD2.ндок = D2.ндок
-    WHERE D2.Покупатель_ID = T2.Покупатель_ID
+    SELECT Товар_ID FROM ПокупательТовары WHERE Покупатель_ID = ПарыПокупателей.id2
 )
 AND NOT EXISTS (
-    SELECT DD2.Товар_ID
-    FROM Документы_данные DD2
-    INNER JOIN Документы D2 ON DD2.ндок = D2.ндок
-    WHERE D2.Покупатель_ID = T2.Покупатель_ID
-
+    SELECT Товар_ID FROM ПокупательТовары WHERE Покупатель_ID = ПарыПокупателей.id2
     EXCEPT
-
-    SELECT DD1.Товар_ID
-    FROM Документы_данные DD1
-    WHERE DD1.ндок = T1.ндок
+    SELECT Товар_ID FROM ПокупательТовары WHERE Покупатель_ID = ПарыПокупателей.id1
 )
 
 --Задание 8
-SELECT T1.Покупатель_ID, T1.Сумма, COUNT(T2.Покупатель_ID) as Рейтинг
-FROM Документы AS T1 INNER JOIN Документы AS T2 ON
-    T1.Сумма <= T2.Сумма
-GROUP BY T1.Покупатель_ID, T1.Сумма
-ORDER BY Рейтинг 
+SELECT T1.Покупатель_ID, T1.ОбщаяСумма, COUNT(T2.Покупатель_ID) as Рейтинг
+FROM 
+(   
+SELECT Покупатели.Покупатель_ID, ISNULL(SUM(Д.Сумма), 0) as ОбщаяСумма
+    FROM Покупатели
+    LEFT JOIN Документы Д ON Покупатели.Покупатель_ID = Д.Покупатель_ID
+    GROUP BY Покупатели.Покупатель_ID
+) AS T1 
+LEFT JOIN
+(   
+SELECT Покупатели.Покупатель_ID, ISNULL(SUM(Д.Сумма), 0) as ОбщаяСумма
+    FROM Покупатели
+    LEFT JOIN Документы Д ON Покупатели.Покупатель_ID = Д.Покупатель_ID
+    GROUP BY Покупатели.Покупатель_ID
+) AS T2 ON T1.ОбщаяСумма <= T2.ОбщаяСумма
+GROUP BY T1.Покупатель_ID, T1.ОбщаяСумма
+ORDER BY Рейтинг
+
 
 --Задание 9
-SELECT Товар_ID
-FROM Товары
-WHERE Остаток > 0
-
-UNION
-
-SELECT Товары.Товар_ID
+SELECT DISTINCT Товары.Товар_ID
 FROM Товары INNER JOIN Документы_данные ON
         Товары.Товар_ID = Документы_данные.Товар_ID
     INNER JOIN Документы ON
         Документы_данные.ндок = Документы.ндок
-WHERE Дата BETWEEN '20251101' and '20251130'
-
-UNION 
-
-SELECT Товары.Товар_ID
-FROM Товары INNER JOIN Документы_данные ON
-        Товары.Товар_ID = Документы_данные.Товар_ID
-    INNER JOIN Документы ON
-        Документы_данные.ндок = Документы.ндок
-WHERE (Дата BETWEEN '20251101' and '20251130') and (Остаток > 0)
+WHERE (Остаток > 0) OR (Дата >= '20251101' and Дата < '20251201')
 
 --Задание 10
-SELECT Товар_ID, SUM(Колво * Цена) / (SELECT COUNT(DISTINCT(CASE WHEN Дата is not NULL THEN Дата END)) FROM Документы) AS Res
-FROM Документы_данные
-GROUP BY Товар_ID
+SELECT Товары.Товар_ID, ISNULL(SUM(Колво * Документы_данные.Цена), 0) / (SELECT COUNT(DISTINCT(CASE WHEN Дата is not NULL THEN CAST(Дата as date) END)) FROM Документы) AS Res
+FROM Товары LEFT JOIN Документы_данные ON
+    Товары.Товар_ID = Документы_данные.Товар_ID
+GROUP BY Товары.Товар_ID
