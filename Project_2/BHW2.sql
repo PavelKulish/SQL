@@ -136,7 +136,7 @@ UPDATE Orders
 SET Orders.Sum_RUR = T1.Sum_rur
 FROM Orders INNER JOIN 
 (
-	SELECT ndoc, SUM(Qty_out * Price_RUR) as Sum_rur
+	SELECT ndoc, SUM(Qty_ord * Price_RUR) as Sum_rur
 	FROM Orders_data
 	GROUP BY ndoc
 ) as T1 ON T1.ndoc = Orders.ndoc
