@@ -140,3 +140,95 @@ FROM Orders INNER JOIN
 	FROM Orders_data
 	GROUP BY ndoc
 ) as T1 ON T1.ndoc = Orders.ndoc
+
+--Задание 11
+
+DECLARE @ndoc as int
+SET @ndoc = 100
+
+SELECT 
+	CASE 
+		WHEN Customers.Balance >= Orders.Sum_RUR 
+		     AND ISNULL(Orders.Pmnt_RUR, 0) = 0 
+		THEN 1 ELSE 0 
+	END as CanPay
+FROM Orders INNER JOIN Customers ON
+	Orders.Cust_ID = Customers.Cust_ID
+WHERE Orders.ndoc = @ndoc
+
+
+--Задание 12
+
+DECLARE @nd as int, @sum as float, @cust as int
+SET @nd = 100
+
+SELECT 
+	@sum = Sum_RUR,
+	@cust = Cust_ID
+FROM Orders
+WHERE ndoc = @nd
+
+IF (SELECT Balance FROM Customers WHERE Cust_ID = @cust) >= @sum 
+   AND ISNULL((SELECT Pmnt_RUR FROM Orders WHERE ndoc = @nd), 0) = 0
+BEGIN
+	UPDATE Customers
+	SET Balance = Balance - @sum
+	WHERE Cust_ID = @cust
+
+	UPDATE Orders
+	SET Pmnt_RUR = @sum
+	WHERE ndoc = @nd
+END
+
+
+--Задание 13
+
+DECLARE @nd1 as int
+SET @nd1 = 100
+
+UPDATE Stock
+SET Qty_rsrv = Qty_rsrv + T1.Qty_sum
+FROM Stock INNER JOIN
+(
+	SELECT Book_ID, SUM(Qty_ord) as Qty_sum
+	FROM Orders_data
+	WHERE ndoc = @nd1
+	GROUP BY Book_ID
+) as T1 ON
+	Stock.Book_ID = T1.Book_ID
+
+	
+--Задание 14
+	
+DECLARE @nd2 as int
+SET @nd2 = 100
+
+UPDATE Stock
+SET 
+	Qty_in_Stock = Qty_in_Stock - T1.Qty_sum,
+	Qty_rsrv     = Qty_rsrv     - T1.Qty_sum
+FROM Stock INNER JOIN
+(
+	SELECT Book_ID, SUM(Qty_out) as Qty_sum
+	FROM Orders_data
+	WHERE ndoc = @nd2
+	GROUP BY Book_ID
+) as T1 ON
+	Stock.Book_ID = T1.Book_ID
+
+	
+--Задание 15
+	
+UPDATE Stock
+SET Qty_rsrv = Qty_rsrv - T1.Qty_sum
+FROM Stock INNER JOIN
+(
+	SELECT Orders_data.Book_ID, SUM(Qty_ord) as Qty_sum
+	FROM Orders_data INNER JOIN Orders ON
+		Orders_data.ndoc = Orders.ndoc
+	WHERE Pmnt_RUR = 0 
+	  AND Qty_out = 0
+	  AND CAST(Date_of_Order as date) = DATEADD(day, -1, CAST(GETDATE() as date))
+	GROUP BY Orders_data.Book_ID
+) as T1 ON
+	Stock.Book_ID = T1.Book_ID
