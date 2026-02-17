@@ -57,7 +57,7 @@ SELECT DISTINCT Customer_ID
 FROM Docs
 WHERE Total > 
 (
-    SELECT AVG(Total)
+    SELECT ISNULL(AVG(Total), 0)
     FROM Docs
     WHERE DocDate >= '20241101' AND DocDate < '20241201'
 )

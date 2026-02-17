@@ -110,11 +110,11 @@ ORDER BY Рейтинг
 
 --Задание 9
 SELECT DISTINCT Товары.Товар_ID
-FROM Товары INNER JOIN Документы_данные ON
+FROM Товары LEFT JOIN Документы_данные ON
         Товары.Товар_ID = Документы_данные.Товар_ID
-    INNER JOIN Документы ON
-        Документы_данные.ндок = Документы.ндок
-WHERE (Остаток > 0) OR (Дата >= '20251101' and Дата < '20251201')
+    LEFT JOIN Документы ON
+        Документы_данные.ндок = Документы.ндок AND (Дата >= '20251101' and Дата < '20251201')
+WHERE (Остаток > 0) OR (Документы.ндок IS NOT NULL)
 
 --Задание 10
 SELECT Товары.Товар_ID, ISNULL(SUM(Колво * Документы_данные.Цена), 0) / (SELECT COUNT(DISTINCT(CASE WHEN Дата is not NULL THEN CAST(Дата as date) END)) FROM Документы) AS Res
