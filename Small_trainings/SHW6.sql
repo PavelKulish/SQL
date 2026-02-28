@@ -45,30 +45,61 @@ FROM Карта.Маршруты
 
 --Задание 6
 DECLARE @city as int
-SET @city = 5
+SET @city = 5;
+
+WITH ReadRoads AS (
+    SELECT Город_ID_1, Город_ID_2, Расстояние
+    FROM Карта.Маршруты
+
+    UNION
+
+    SELECT Город_ID_2, Город_ID_1, Расстояние
+    FROM Карта.Маршруты
+)
 
 SELECT DISTINCT T3.Город_ID_2 AS Final_city
-FROM Карта.Маршруты AS T1 LEFT JOIN Карта.Маршруты AS T2 ON
+FROM ReadRoads AS T1 LEFT JOIN ReadRoads AS T2 ON
 		T1.Город_ID_2 = T2.Город_ID_1
-LEFT JOIN Карта.Маршруты AS T3 ON
+LEFT JOIN ReadRoads AS T3 ON
 		T2.Город_ID_2 = T3.Город_ID_1
 WHERE T3.Город_ID_2 is NOT NULL and T1.Город_ID_1 = @city
 
 --Задание 7
+WITH ReadRoads AS (
+    SELECT Город_ID_1, Город_ID_2, Расстояние
+    FROM Карта.Маршруты
+
+    UNION
+
+    SELECT Город_ID_2, Город_ID_1, Расстояние
+    FROM Карта.Маршруты
+)
+
 SELECT DISTINCT T1.Город_ID_1, T2.Город_ID_2
-FROM Карта.Маршруты AS T1 LEFT JOIN Карта.Маршруты AS T2 ON
+FROM ReadRoads AS T1 LEFT JOIN ReadRoads AS T2 ON
 		T1.Город_ID_2 = T2.Город_ID_1
 WHERE T1.Расстояние + T2.Расстояние <
 (
 SELECT Расстояние 
-FROM Карта.Маршруты
+FROM ReadRoads
 WHERE Город_ID_1 = T1.Город_ID_1 AND Город_ID_2 = T2.Город_ID_2
 )
 
 --Задание 8
-SELECT SUM(T3.Расстояние) AS Res
-FROM Карта.Расписание AS T1 INNER JOIN Карта.Расписание AS T2 ON
-		T2.Номер = T1.Номер + 1 AND T1.Расписание_ID = T2.Расписание_ID
-	INNER JOIN Карта.Маршруты AS T3 ON 
-		(T1.Город_ID = T3.Город_ID_1 AND T2.Город_ID = T3.Город_ID_2) OR (T1.Город_ID = T3.Город_ID_2 AND T2.Город_ID = T3.Город_ID_1)
+WITH ReadRoads AS (
+    SELECT Город_ID_1, Город_ID_2, Расстояние
+    FROM Карта.Маршруты
+
+    UNION
+
+    SELECT Город_ID_2, Город_ID_1, Расстояние
+    FROM Карта.Маршруты
+)
+SELECT T1.Расписание_ID, SUM(T3.Расстояние) AS Res
+FROM Карта.Расписание AS T1
+INNER JOIN Карта.Расписание AS T2 ON 
+    T2.Номер = T1.Номер + 1 AND T1.Расписание_ID = T2.Расписание_ID
+INNER JOIN ReadRoads AS T3 ON 
+    T1.Город_ID = T3.Город_ID_1 AND T2.Город_ID = T3.Город_ID_2
 GROUP BY T1.Расписание_ID
+HAVING COUNT(*) = (SELECT COUNT(*) - 1 FROM Карта.Расписание T4 WHERE T4.Расписание_ID = T1.Расписание_ID);
